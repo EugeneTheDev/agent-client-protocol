@@ -2,7 +2,7 @@
 
 ## Phase
 
-3. Synthesis (research milestone 1 complete: all 14 notes written, no HANDOFF or NEEDS_DECISION)
+4. Decisions (synthesis written to `.agents/research/synthesis.md`)
 
 ## Agent list
 
@@ -38,6 +38,7 @@
 | Cline triage | sonnet | done | `.agents/research/cline.md` |
 | OpenCode triage | sonnet | done | `.agents/research/opencode.md` |
 | Goose triage | sonnet | done | `.agents/research/goose.md` |
+| Synthesis (orchestrator) | — | done | `.agents/research/synthesis.md` |
 
 ## Decisions
 
@@ -45,11 +46,26 @@
 |------|----------|--------|
 | 2026-10-05 | Which candidate agents to research? | All of them: Copilot CLI, Cursor, Amp, Kimi CLI, Qwen Code, Cline, OpenCode, Goose. Each one gets a Sonnet triage first and is skipped if it has no quota reporting. |
 | 2026-10-05 | Task granularity for mandatory agents | 2 tasks per agent: (a) native data model and delivery; (b) ACP adapter output plus relation to token usage/context. |
+| 2026-10-05 | D1 Delivery | Push `quota_update` session update **plus** a client-to-agent `quota/read` request. All quota functionality is behind an agent capability: the agent must explicitly advertise that it has quota and supports reporting it. |
+| 2026-10-05 | D3 Update semantics | User leans toward per-limit upserts, consistent with existing patch semantics (`MaybeUndefined`). Pending research: `acp-update-semantics.md`. |
+| 2026-10-05 | D4 Status/severity | Optional agent-graded `status` (`ok` / `warning` / `exceeded`), open enum with `_`-prefixed custom values. Clients may derive their own when it's absent. |
 
 ## Open questions
 
-(none)
+- D3 update semantics: confirm the upsert shape. Per `acp-update-semantics.md`: v2 says "updates are upserts"; per-id upserts carry one entity per notification; the patch rule is omitted = unchanged, `null` = clear, value = replace; the only removal precedent is a separate `plan_removed` update.
+- D5 value fields: user asked for an explanation of what making `usedPercent` required would cost, and how "percent" is
+  disambiguated across windows (hourly, daily, weekly). Explained in chat; awaiting a decision.
+- D6 overage/credits/balances, D7 limit-hit errors, D8 capability details (now: agent capability, decided; client side
+  still open), D9 protocol version: not asked yet.
+- Decision 10 (timestamps): follow the existing convention, RFC 3339 `date-time` in v2 and "ISO 8601" in v1 (see `acp-capabilities.md`). ACP has no duration fields yet, so a window-duration unit is new (to be asked).
+
+## Research tasks (milestone 2: ACP conventions)
+
+| Task | Model | Status | Note |
+|------|-------|--------|------|
+| ACP update/upsert semantics (`MaybeUndefined`, existing update kinds) | opus | done | `.agents/research/acp-update-semantics.md` |
+| ACP capability gating, method scoping, open enums, time/duration conventions | sonnet | done | `.agents/research/acp-capabilities.md` |
 
 ## Next step
 
-Synthesis: read the notes selectively, build the agent x field x semantics comparison table, and list the open design decisions to batch to the user.
+Ask the remaining decisions (D3 confirm, D5, D6, D7, D8 client side, D9, duration unit) in one batch.

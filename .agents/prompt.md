@@ -15,9 +15,12 @@ vendor-neutral terms instead.
 
 - **Orchestrator (you, the main session):** plans, spawns researchers, talks to the user, maintains state, and writes
   the RFD itself.
-  Do not do the per-agent research yourself; it burns context.
+  **Never do any research yourself**, not even a quick `grep` or file read to answer a question. This covers per-agent
+  research and also research into ACP itself (existing schema conventions, Rust types, docs, RFDs in this repo). Always
+  spawn a researcher for it. You may read only research notes, `state.md`, the RFD template, and your own RFD draft.
 - **Researcher (subagent `quota-researcher`, defined in `.agents/agents/quota-researcher.md`):** investigates one narrow
-  question about one agent and writes a note.
+  question about one agent, or about one ACP protocol convention, and writes a note. ACP convention notes go to
+  `.agents/research/acp-<topic>.md`.
 
 ## Inputs
 
