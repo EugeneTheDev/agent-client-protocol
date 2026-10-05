@@ -88,3 +88,51 @@ Sources: every other note in this directory. All claims are traceable to those n
 8. Limit-hit errors: structured error data / new error code / notice / out of scope.
 9. Capability negotiation and protocol version (v1 unstable, v2).
 10. Timestamp format.
+
+## 5. Overage (milestone 3)
+
+Sources: `*-overage.md` notes for Claude Code, Codex, Gemini CLI, Copilot CLI, Cursor, Cline.
+
+### 5.1 Comparison
+
+| Concept | Claude Code | Codex | Gemini CLI | Copilot CLI | Cursor | Cline |
+|---|---|---|---|---|---|---|
+| What it is | extra usage billed in money after plan windows | account-wide credits after both windows | AI credits for 3 eligible models | premium requests beyond entitlement | on-demand spend beyond included pools | none (plan and credits are independent providers) |
+| Native id | `overage` / `extra_usage` | none | `creditType` | bucket key | none | none |
+| Allowed | `overageStatus` allowed/allowed_warning | `hasCredits \|\| unlimited` | strategy + balance >= 50 + eligible model | `overageAllowedWithExhaustedQuota` | `enabled` | — |
+| Active | `isUsingOverage` (inferred) and `overageInUse` (server) | inferred only (poll) | inferred (opted in on request) | inferred (`overage > 0`) | inferred | — |
+| Unavailable reason | 13 values in 4 groups: exhausted / not available / not set up / indeterminate | depleted / cap reached (owner vs member) / not enabled | proposed: user disabled / insufficient balance / not eligible / model not eligible | none | inferred only | error-time only |
+| Balance (remaining, no cap) | not exposed | `credits.balance` (decimal string) | `remainingCredits` (int64 string) | — | — | `current_balance` |
+| Count used (no cap) | — | — | per-response `consumedCredits` | `overage` (requests or AI credits) | — | — |
+| Cap (limit + used + reset) | `monthly_limit` / `used_credits` (minor units), `overageResetsAt` | `individualLimit` spend cap (monthly) | — | budget exists, not exposed | `onDemand.limit/used/remaining`, `billingCycleEnd` | `SPEND_LIMIT_EXCEEDED` (error only) |
+| Unlimited | `monthly_limit: null` | `credits.unlimited` | — | (`entitlement: -1` on base) | `limit: null` | — |
+| Units | currency minor units + ISO 4217 | credits (no currency) | credits (no currency) | requests or AI credits | probably USD cents | USD / micro-USD |
+| Coverage | all plan windows + credit-only features; not listed | `codex` bucket windows (implicit) | eligible models | the bucket carrying the flags | both pools | n/a |
+| Consent | org settings; per-model consent dialog for one model | never asks | `ask` / `always` / `never`; choice lasts one prompt | never asks | opt-in (individual) / admin | never asks |
+
+### 5.2 Findings for the field set
+
+1. **Every agent with overage can state whether it is usable.** "Active" is explicit only in Claude Code; everywhere
+   else it is inferred.
+2. **Meters come in three shapes**: a balance (remaining only), an uncapped count (used only), and a cap
+   (limit + used + reset). Codex has both a balance and a cap at once, so one meter per overage is not enough.
+3. **A cap has exactly the shape of a base limit** (used/limit/share/reset/period). Cline's spend limit is already a
+   base limit; Claude's monthly cap, Codex's spend cap and Cursor's on-demand limit have the same shape.
+4. **Reasons cluster into a few categories**: exhausted (out of funds or cap reached), not enabled (not opted in, not
+   set up, user disabled), not permitted (org/seat/plan policy), not eligible (model), unknown.
+5. **"Unlimited" must be explicit.** `null` already means "clear" under the patch rule, so it can't also mean unlimited.
+6. **Coverage is rarely reported.** It is implied by plan knowledge (Claude, Codex), models (Gemini), or the bucket
+   (Copilot). It must be optional.
+7. **Units differ** (currency minor units, decimal credit strings, requests, micro-dollars). An explicit unit or
+   currency is needed. ACP's `Cost` already uses `amount: number` + ISO 4217 `currency`.
+8. **Consent and purchase are interactions, not state.** Only Gemini asks per use; Claude has one per-model dialog.
+   Purchase/upsell fields (`credits_required`, `canUserPurchaseCredits`) and Codex reset credits are actions.
+
+### 5.3 Open decisions
+
+- Where caps live: `cappedBy` limit references vs `meters[]` inside overage.
+- State model: required `state` + optional `reason`.
+- Amount representation (follow `Cost`?).
+- Consent and purchase actions: in or out of scope.
+- Removal of limits and overages from the keyed list.
+- "Unlimited" representation.

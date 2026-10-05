@@ -47,17 +47,19 @@
 | 2026-10-05 | Which candidate agents to research? | All of them: Copilot CLI, Cursor, Amp, Kimi CLI, Qwen Code, Cline, OpenCode, Goose. Each one gets a Sonnet triage first and is skipped if it has no quota reporting. |
 | 2026-10-05 | Task granularity for mandatory agents | 2 tasks per agent: (a) native data model and delivery; (b) ACP adapter output plus relation to token usage/context. |
 | 2026-10-05 | D1 Delivery | Push `quota_update` session update **plus** a client-to-agent `quota/read` request. All quota functionality is behind an agent capability: the agent must explicitly advertise that it has quota and supports reporting it. |
-| 2026-10-05 | D3 Update semantics | User leans toward per-limit upserts, consistent with existing patch semantics (`MaybeUndefined`). Pending research: `acp-update-semantics.md`. |
+| 2026-10-05 | D3 Update semantics | Keyed list in one update: `quota_update` carries `limits[]`, each entry a keyed patch (omitted = unchanged, `null` = clear, value = replace). This is new in ACP; the RFD must justify it. `quota/read` returns the full list. Removal mechanism still to define. |
 | 2026-10-05 | D4 Status/severity | Optional agent-graded `status` (`ok` / `warning` / `exceeded`), open enum with `_`-prefixed custom values. Clients may derive their own when it's absent. |
 
+| 2026-10-05 | D5 Value fields | All optional: `usedPercent` (used share, 0-100, may exceed 100), `used` / `limit` / `remaining` with `unit`. Agents SHOULD send `usedPercent` when known. A limit must carry at least one of `usedPercent`, `used`, `remaining` or `status`. Agents never synthesize values. |
+| 2026-10-05 | D7 Limit-hit errors | New ACP error code (e.g. `quotaExceeded`) with optional `data` `limitId`, `resetsAt`, `retryAfter`. The agent also pushes `quota_update` with `status: exceeded` when it can. |
+| 2026-10-05 | D8 Client capability | Both sides: the agent advertises quota support; the client advertises it can display quota (`session.quota`, like `session.notices`). Push only when both are set; `quota/read` needs only the agent capability. |
+| 2026-10-05 | D9 Protocol version | v1 unstable + v2. |
+| 2026-10-05 | D10 Window duration | ISO 8601 duration string (`PT5H`, `P7D`, `P1M`). Timestamps: RFC 3339 in v2, ISO 8601 in v1. |
+| 2026-10-05 | D6 Overage | Direction: a separate `overage` entity next to `limits[]` (own state: allowed / active / disabled reason, optional meter, list of covered limits). Same keyed-list upsert semantics as limits. `quota/read` returns the full information, including overages. Pivot if research shows incompatible formats. Common fields: pending research (milestone 3). |
 ## Open questions
 
-- D3 update semantics: confirm the upsert shape. Per `acp-update-semantics.md`: v2 says "updates are upserts"; per-id upserts carry one entity per notification; the patch rule is omitted = unchanged, `null` = clear, value = replace; the only removal precedent is a separate `plan_removed` update.
-- D5 value fields: user asked for an explanation of what making `usedPercent` required would cost, and how "percent" is
-  disambiguated across windows (hourly, daily, weekly). Explained in chat; awaiting a decision.
-- D6 overage/credits/balances, D7 limit-hit errors, D8 capability details (now: agent capability, decided; client side
-  still open), D9 protocol version: not asked yet.
-- Decision 10 (timestamps): follow the existing convention, RFC 3339 `date-time` in v2 and "ISO 8601" in v1 (see `acp-capabilities.md`). ACP has no duration fields yet, so a window-duration unit is new (to be asked).
+- D6 Overage: common field set pending milestone 3 research. Consent (who decides to spend) not decided yet.
+- D3 follow-up: how a limit is removed under the keyed-list update.
 
 ## Research tasks (milestone 2: ACP conventions)
 
@@ -66,6 +68,17 @@
 | ACP update/upsert semantics (`MaybeUndefined`, existing update kinds) | opus | done | `.agents/research/acp-update-semantics.md` |
 | ACP capability gating, method scoping, open enums, time/duration conventions | sonnet | done | `.agents/research/acp-capabilities.md` |
 
+## Research tasks (milestone 3: overage)
+
+| Task | Model | Status | Note |
+|------|-------|--------|------|
+| Claude Code overage | opus | done | `.agents/research/claude-code-overage.md` |
+| Codex overage (credits, spend control) | opus | done | `.agents/research/codex-overage.md` |
+| Gemini CLI overage (AI credits) | opus | done | `.agents/research/gemini-overage.md` |
+| Copilot CLI overage (premium requests) | sonnet | done | `.agents/research/copilot-cli-overage.md` |
+| Cursor overage (on-demand usage) | sonnet | done | `.agents/research/cursor-overage.md` |
+| Cline overage (pay-as-you-go, spend limits) | sonnet | done | `.agents/research/cline-overage.md` |
+
 ## Next step
 
-Ask the remaining decisions (D3 confirm, D5, D6, D7, D8 client side, D9, duration unit) in one batch.
+Ask the overage field-set decisions (synthesis.md 5.3) in one batch, then write the RFD draft.
