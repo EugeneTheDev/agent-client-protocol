@@ -2,93 +2,124 @@
 
 ## Phase
 
-6. Review (draft written: `docs/rfds/rate-limits-and-quotas.mdx`)
+6. Review. The draft is written, committed and pushed: `docs/rfds/rate-limits-and-quotas.mdx` (commit `3603c5a6`).
+   Waiting for the user's review feedback.
+
+## Resume notes
+
+- Workflow: `.agents/prompt.md`. The orchestrator **never researches itself**, not even quick greps of this repo
+  (schema, Rust types, docs). Spawn `quota-researcher` for everything (Sonnet for simple lookups); ACP convention
+  notes go to `.agents/research/acp-<topic>.md`.
+- `.agents/` is gitignored. Stage explicit paths with `git add -f` (`.agents/research/*.md`, `.agents/state.md`, the RFD,
+  and `.agents/prompt.md` / `.agents/agents/quota-researcher.md` when the user asks to change them). Push to
+  `eugenethedev/rfd-rate-limits-quotas` only, never force.
+- Before every commit, scan notes and the RFD for internal names:
+  `grep -rniE "jetbrains|IJAI|air-ext|AirExt|plugins/air|JbCentral|AcpSessionEventMapper|ThreadGui|SessionEventStore|_meta\.jetbrains"`.
+- Do not run `npm run generate` / `npm run check` unless asked.
 
 ## Agent list
 
-| Agent       | Kind      | Status      |
-|-------------|-----------|-------------|
+| Agent       | Kind      | Status |
+|-------------|-----------|--------|
 | Claude Code | mandatory | done |
 | Codex       | mandatory | done |
 | Gemini CLI  | mandatory | done |
-| Copilot CLI | candidate | done: SDK `account.getQuota` (chat/completions/premium_interactions; entitlement, used, remaining %, overage, monthly resetDate); push `session.error` rate_limit/quota codes; nothing over ACP |
-| Cursor | candidate | done: no ACP/CLI quota; monthly pools via undocumented poll endpoint only |
-| Amp | candidate | skipped: no structured quota; only `amp usage` balance text |
-| Kimi CLI | candidate | done: `/usage` polls 5h/weekly windows (used/limit/remaining/reset); nothing over ACP |
-| Qwen Code | candidate | skipped: no quota fields; free tier discontinued; string-matched quota errors only |
-| Cline | candidate | done: nothing over ACP; structured spend-limit 429 (period, limit, spent, resets_at) and balance poll |
-| OpenCode | candidate | done (minor): ACP has only usage_update; gateway 429 metadata `limitName` 5h/weekly/monthly dropped |
-| Goose | candidate | skipped: no quota reporting; only `credits_exhausted` JSON-RPC error data |
+| Copilot CLI | candidate | done: SDK `account.getQuota` per category (entitlement, used, remaining %, overage, monthly reset); `session.error` rate_limit/quota codes; nothing over ACP |
+| Cursor      | candidate | done: monthly pools + on-demand via undocumented poll endpoint only; nothing over ACP |
+| Kimi CLI    | candidate | done: `/usage` polls 5h/weekly rows (used/limit/remaining/reset); nothing over ACP |
+| Cline       | candidate | done: nothing over ACP; spend-limit 429 error data; balance poll; no overage fallback |
+| OpenCode    | candidate | done (minor): ACP has only `usage_update`; gateway 429 `limitName` dropped |
+| Amp         | candidate | skipped: no structured quota; only `amp usage` balance text |
+| Qwen Code   | candidate | skipped: no quota fields; free tier discontinued; string-matched quota errors |
+| Goose       | candidate | skipped: no quota reporting; only `credits_exhausted` error data |
 
 ## Research tasks
 
-| Task | Model | Status | Note |
-|------|-------|--------|------|
-| Claude Code (a): native data model and delivery | opus | done | `.agents/research/claude-code-native.md` |
-| Claude Code (b): ACP adapter output and relation to usage/context | opus | done | `.agents/research/claude-code-acp-adapter.md` |
-| Codex (a): native data model and delivery | opus | done | `.agents/research/codex-native.md` |
-| Codex (b): ACP adapter output and relation to usage/context | opus | done | `.agents/research/codex-acp-adapter.md` |
-| Gemini CLI (a): native data model and delivery | opus | done | `.agents/research/gemini-native.md` |
-| Gemini CLI (b): ACP integration output and relation to usage/context | opus | done | `.agents/research/gemini-acp.md` |
-| Copilot CLI triage | sonnet | done | `.agents/research/copilot-cli.md` |
-| Cursor triage | sonnet | done | `.agents/research/cursor.md` |
-| Amp triage | sonnet | done | `.agents/research/amp.md` |
-| Kimi CLI triage | sonnet | done | `.agents/research/kimi-cli.md` |
-| Qwen Code triage | sonnet | done | `.agents/research/qwen-code.md` |
-| Cline triage | sonnet | done | `.agents/research/cline.md` |
-| OpenCode triage | sonnet | done | `.agents/research/opencode.md` |
-| Goose triage | sonnet | done | `.agents/research/goose.md` |
-| Synthesis (orchestrator) | — | done | `.agents/research/synthesis.md` |
+All tasks are done. No researcher is running.
+
+| Milestone | Task | Model | Note |
+|-----------|------|-------|------|
+| 1 | Claude Code native model | opus | `claude-code-native.md` |
+| 1 | Claude Code ACP adapter | opus | `claude-code-acp-adapter.md` |
+| 1 | Codex native model | opus | `codex-native.md` |
+| 1 | Codex ACP adapter | opus | `codex-acp-adapter.md` |
+| 1 | Gemini CLI native model | opus | `gemini-native.md` |
+| 1 | Gemini CLI ACP output | opus | `gemini-acp.md` |
+| 1 | Triage: Copilot CLI, Cursor, Amp, Kimi CLI, Qwen Code, Cline, OpenCode, Goose | sonnet | `<agent>.md` |
+| 1 | Cross-agent synthesis (orchestrator) | — | `synthesis.md` (sections 1-4) |
+| 2 | ACP update/upsert semantics | opus | `acp-update-semantics.md` |
+| 2 | ACP capabilities, scoping, open enums, time conventions | sonnet | `acp-capabilities.md` |
+| 3 | Overage: Claude Code, Codex, Gemini CLI | opus | `<agent>-overage.md` |
+| 3 | Overage: Copilot CLI, Cursor, Cline | sonnet | `<agent>-overage.md` |
+| 3 | Overage synthesis (orchestrator) | — | `synthesis.md` (section 5) |
+| 4 | Active-pool deducibility: Claude Code, Codex, Gemini CLI | opus | `<agent>-active.md` |
+| 4 | Active-pool deducibility: Copilot CLI, Cursor | sonnet | `<agent>-active.md` |
+| 4 | ACP `Cost` usage and root-shape conventions | sonnet | `acp-amounts-and-root.md` |
+| 5 | ACP precedents for collapsed status enums vs boolean + reason | sonnet | `acp-state-enums.md` |
+
+All notes are in `.agents/research/`.
+
+## Current design (as written in the draft)
+
+- **Delivery:** a `quota_update` session update (full snapshot) plus a client-to-agent `quota/read` request; both return
+  `QuotaSnapshot { pools, updatedAt?, _meta? }`. No extra nesting.
+- **Capabilities:** the agent advertises `quota: {}` (top-level). The client advertises `session.quota: {}`. Push needs
+  both; `quota/read` needs only the agent capability.
+- **Full snapshots:** each update replaces the previous one. No patch semantics. Omitted and `null` mean "not reported".
+- **`QuotaPool`** `{ id, label?, state?, meters[] }`. No `kind` field and no `active` marker. Display order is meaningful.
+- **`QuotaPoolState`**, an open enum: `available` / `exhausted` / `not_enabled` / `not_permitted` / `not_eligible` /
+  `_custom`. Only `available` means usable. Absent means unknown.
+- **`QuotaMeter`** `{ id, label?, usedPercent?, used?, limit?, remaining?, window? (ISO 8601 duration),
+  resetsAt? (RFC 3339), status? }`. It needs at least one of `usedPercent` / `used` / `remaining` / `status`. Agents never
+  synthesize values.
+- **`QuotaMeterStatus`**, an open enum: `ok` / `warning` / `exceeded`.
+- **`Quantity`** `{ value: decimal string, unit }`. `unit` is ISO 4217 for money (major units) or a lowercase unit
+  (`requests`, `tokens`, `credits`). `Cost` is unchanged.
+- **`quotaExceeded` error:** a new code (placeholder `-32003`). Its `data` is `{ poolId?, meterId?, resetsAt?, retryAfter? }`.
+- **`quota/read`:** `sessionId` is optional. Without it, the agent answers for the account it would use for a new session.
+- **Versions:** v1 unstable (`unstable_quota`) plus v2. Consent and purchase flows are out of scope.
 
 ## Decisions
 
-| Date | Question | Answer |
-|------|----------|--------|
-| 2026-10-05 | Which candidate agents to research? | All of them: Copilot CLI, Cursor, Amp, Kimi CLI, Qwen Code, Cline, OpenCode, Goose. Each one gets a Sonnet triage first and is skipped if it has no quota reporting. |
-| 2026-10-05 | Task granularity for mandatory agents | 2 tasks per agent: (a) native data model and delivery; (b) ACP adapter output plus relation to token usage/context. |
-| 2026-10-05 | D1 Delivery | Push `quota_update` session update **plus** a client-to-agent `quota/read` request. All quota functionality is behind an agent capability: the agent must explicitly advertise that it has quota and supports reporting it. |
-| 2026-10-05 | D3 Update semantics | Keyed list in one update: `quota_update` carries `limits[]`, each entry a keyed patch (omitted = unchanged, `null` = clear, value = replace). This is new in ACP; the RFD must justify it. `quota/read` returns the full list. Removal mechanism still to define. |
-| 2026-10-05 | D4 Status/severity | Optional agent-graded `status` (`ok` / `warning` / `exceeded`), open enum with `_`-prefixed custom values. Clients may derive their own when it's absent. |
+Superseded rows are kept for history and marked "superseded".
 
-| 2026-10-05 | D5 Value fields | All optional: `usedPercent` (used share, 0-100, may exceed 100), `used` / `limit` / `remaining` with `unit`. Agents SHOULD send `usedPercent` when known. A limit must carry at least one of `usedPercent`, `used`, `remaining` or `status`. Agents never synthesize values. |
-| 2026-10-05 | D7 Limit-hit errors | New ACP error code (e.g. `quotaExceeded`) with optional `data` `limitId`, `resetsAt`, `retryAfter`. The agent also pushes `quota_update` with `status: exceeded` when it can. |
-| 2026-10-05 | D8 Client capability | Both sides: the agent advertises quota support; the client advertises it can display quota (`session.quota`, like `session.notices`). Push only when both are set; `quota/read` needs only the agent capability. |
-| 2026-10-05 | D9 Protocol version | v1 unstable + v2. |
-| 2026-10-05 | D10 Window duration | ISO 8601 duration string (`PT5H`, `P7D`, `P1M`). Timestamps: RFC 3339 in v2, ISO 8601 in v1. |
-| 2026-10-05 | D6 Overage | Direction: a separate `overage` entity next to `limits[]` (own state: allowed / active / disabled reason, optional meter, list of covered limits). Same keyed-list upsert semantics as limits. `quota/read` returns the full information, including overages. Pivot if research shows incompatible formats. Common fields: pending research (milestone 3). |
-| 2026-10-05 | D3 revised | Pivot from patch semantics to full snapshots for simpler updates (scope to confirm: whole `quota_update` or overage only). Removal and `unlimited` questions become moot. |
-| 2026-10-05 | D6a Overage caps | `cappedBy` references rejected as confusing (two kinds of meters). User leans toward a nested list of meters, but meters must not be split between overage root fields and the nested list. Brainstorming. |
-| 2026-10-05 | D6b Overage state reason | A field named just `reason` is confusing; the name must say it explains unavailability. |
-| 2026-10-05 | D6c Amounts | Reuse the existing `Cost` type. |
-| 2026-10-05 | D6d Consent | Out of scope. |
-| 2026-10-05 | D6e Overage fields | Drop `unlimited` (no patch semantics). Drop `covers`; marking an overage `active` is enough. |
-| 2026-10-06 | D11 Structure | Option B: everything is a pool holding meters; amounts only inside meters. User questions a `kind` (included vs overage) field: to a client all pools are just limits; prefer no `kind`. An `active` marker is wanted; reliability across agents under research. |
-| 2026-10-06 | D3 final | Full snapshots for the whole `quota_update`; same shape as the `quota/read` result. |
-| 2026-10-06 | D6c revised | Brainstorm a new generic amount type (`{amount: decimal, unit: string}`) vs a union with `Cost`; research where `Cost` is used. |
-| 2026-10-06 | D12 Root shape | User asks whether the root can be a bare list of pools instead of an object with a `pools` field; check ACP conventions. |
-| 2026-10-06 | D13 Active marker | Drop `active` from this RFD (no agent can fill it reliably). Encoding question is moot. |
-| 2026-10-06 | D14 State vs status | Both (pool encoding reopened, see D19): meter `status` (`ok` / `warning` / `exceeded`) and pool `state` (`available` / `unavailable`) with `unavailableReason`. |
-| 2026-10-06 | D15 Amount type | `Quantity { value: decimal string, unit }`; `unit` is ISO 4217 for money or a lowercase open enum (`credits`, `requests`, `tokens`). `Cost` stays unchanged in `usage_update`. |
-| 2026-10-06 | D12 Root shape | Objects, no extra nesting: `{sessionUpdate: "quota_update", pools: [...]}` and `quota/read` result `{pools: [...]}`. |
-| 2026-10-06 | D11 kind | No `kind` field; all pools are just limits. Pool order is meaningful (agent's display order). |
-| 2026-10-06 | D16 As-of time | Optional `updatedAt` on the snapshot root (when the agent last got the data); display only, never an ordering key. |
-| 2026-10-06 | D7 refined | `quotaExceeded` error `data` (all optional): `poolId`, `meterId`, `resetsAt`, `retryAfter` (ISO 8601 duration). |
-| 2026-10-06 | D17 Ordering | Pools and meters are in display order; clients SHOULD keep it. |
-| 2026-10-06 | D18 `quota/read` scope | Option 1: optional `sessionId`. Without it the agent answers for the account it would use for a new session; with it, for that session. The push carries pools for its own session. |
-| 2026-10-06 | D19 Pool state | One optional open enum `state`: `available` / `exhausted` / `not_enabled` / `not_permitted` / `not_eligible` / `_custom`. Only `available` means usable; any other value (including unknown and `_` values) means not usable. Absent = the agent doesn't know (clients make no availability claim). Replaces `state` + `unavailableReason`. |
+| Date | ID | Question | Answer |
+|------|----|----------|--------|
+| 2026-10-05 | — | Candidate agents | All eight candidates triaged on Sonnet; skipped if no quota reporting. |
+| 2026-10-05 | — | Task granularity | Two tasks per mandatory agent: native model, ACP output. |
+| 2026-10-05 | D1 | Delivery | Push `quota_update` plus `quota/read`; everything behind an explicit agent capability. |
+| 2026-10-05 | D3 | Update semantics | Superseded. First: a keyed list of patches. Final (2026-10-06): full snapshots for the whole `quota_update`. |
+| 2026-10-05 | D4 | Meter status | Optional agent-graded `status` (`ok` / `warning` / `exceeded`), open enum. |
+| 2026-10-05 | D5 | Value fields | All optional. `usedPercent` SHOULD be sent when known. At least one of `usedPercent` / `used` / `remaining` / `status`. Never synthesize. |
+| 2026-10-05 | D6 | Overage | Superseded: a separate overage entity with `cappedBy`, `covers` and `unlimited`. Replaced by D11 (everything is a pool). Consent is out of scope. |
+| 2026-10-05 | D7 | Limit-hit errors | New error code plus `status: exceeded` push. Data: `poolId`, `meterId`, `resetsAt`, `retryAfter` (refined 2026-10-06). |
+| 2026-10-05 | D8 | Client capability | Both sides opt in: agent `quota`, client `session.quota`. |
+| 2026-10-05 | D9 | Versions | v1 unstable plus v2. |
+| 2026-10-05 | D10 | Window duration | ISO 8601 duration string. Timestamps RFC 3339 (v2) / ISO 8601 (v1). |
+| 2026-10-06 | D11 | Structure | Option B: a flat list of pools, each holding meters; amounts only in meters; no `kind`. |
+| 2026-10-06 | D12 | Root shape | Objects: `{sessionUpdate: "quota_update", pools}` and `{pools}`. A bare array is not ACP convention. |
+| 2026-10-06 | D13 | Active marker | Dropped: no agent can fill it reliably. |
+| 2026-10-06 | D14 | State vs status | Both pool `state` and meter `status`. Encoding refined by D19. |
+| 2026-10-06 | D15 | Amount type | `Quantity { value: decimal string, unit }`. `Cost` is unchanged. |
+| 2026-10-06 | D16 | As-of time | Optional `updatedAt` on the snapshot; display only. |
+| 2026-10-06 | D17 | Ordering | Pools and meters are in display order. |
+| 2026-10-06 | D18 | `quota/read` scope | Optional `sessionId`. Without it, the account for a new session. |
+| 2026-10-06 | D19 | Pool state encoding | One optional open enum. Only `available` is usable. Absent means unknown. |
+
 ## Open questions
 
-Choices made in the draft without an explicit user decision (to confirm in review):
-- Agent capability placement: top-level `agentCapabilities.quota` (v1) / `capabilities.quota` (v2), like `providers`.
-- Client capability `session.quota` in both v1 and v2 (v2 could drop it thanks to `SessionUpdate::Other`).
-- `quota_update` is not replayed on `session/load` / `session/resume`.
-- Error code number: `-32003` used as a placeholder.
-- `quotaExceeded` MAY be returned without the quota capability (ids then omitted).
-- Agents SHOULD NOT send identical consecutive snapshots; MAY push at session start.
-- Adapters keep vendor `_meta` keys for one compatibility cycle; stabilize after two Agents and one Client ship.
-- FAQ: API-key rate-limit headers MAY map to `PT1M` meters (optional).
-- RFD navigation registration (docs config) not done.
+Choices made in the draft without an explicit user decision; confirm them in review:
+
+1. Agent capability placement: top-level `agentCapabilities.quota` (v1) / `capabilities.quota` (v2), like `providers`.
+2. Client capability `session.quota` required in v2 too (v2 could drop it thanks to `SessionUpdate::Other`).
+3. `quota_update` is not replayed on `session/load` / `session/resume`; clients call `quota/read`.
+4. Error code `-32003` is a placeholder.
+5. `quotaExceeded` MAY be returned without the quota capability (ids omitted).
+6. Agents push when their data changes, MAY push at session start, and SHOULD NOT send identical consecutive snapshots.
+7. Adapters keep vendor `_meta` keys for one compatibility cycle. Stabilize after two agents and one client ship.
+8. FAQ: API-key per-minute rate-limit headers MAY map to `PT1M` meters.
+9. The RFD is not yet registered in the docs navigation. A researcher must check how other RFDs are registered.
 
 ## Next step
 
-Get the user's review of the draft and iterate.
+Get the user's review of `docs/rfds/rate-limits-and-quotas.mdx`, including the nine open choices above, and iterate.
