@@ -66,6 +66,15 @@
 | 2026-10-06 | D3 final | Full snapshots for the whole `quota_update`; same shape as the `quota/read` result. |
 | 2026-10-06 | D6c revised | Brainstorm a new generic amount type (`{amount: decimal, unit: string}`) vs a union with `Cost`; research where `Cost` is used. |
 | 2026-10-06 | D12 Root shape | User asks whether the root can be a bare list of pools instead of an object with a `pools` field; check ACP conventions. |
+| 2026-10-06 | D13 Active marker | Drop `active` from this RFD (no agent can fill it reliably). Encoding question is moot. |
+| 2026-10-06 | D14 State vs status | Both (pool encoding reopened, see D19): meter `status` (`ok` / `warning` / `exceeded`) and pool `state` (`available` / `unavailable`) with `unavailableReason`. |
+| 2026-10-06 | D15 Amount type | `Quantity { value: decimal string, unit }`; `unit` is ISO 4217 for money or a lowercase open enum (`credits`, `requests`, `tokens`). `Cost` stays unchanged in `usage_update`. |
+| 2026-10-06 | D12 Root shape | Objects, no extra nesting: `{sessionUpdate: "quota_update", pools: [...]}` and `quota/read` result `{pools: [...]}`. |
+| 2026-10-06 | D11 kind | No `kind` field; all pools are just limits. Pool order is meaningful (agent's display order). |
+| 2026-10-06 | D16 As-of time | Optional `updatedAt` on the snapshot root (when the agent last got the data); display only, never an ordering key. |
+| 2026-10-06 | D7 refined | `quotaExceeded` error `data` (all optional): `poolId`, `meterId`, `resetsAt`, `retryAfter` (ISO 8601 duration). |
+| 2026-10-06 | D17 Ordering | Pools and meters are in display order; clients SHOULD keep it. |
+| 2026-10-06 | D18 `quota/read` scope | Option 1: optional `sessionId`. Without it the agent answers for the account it would use for a new session; with it, for that session. The push carries pools for its own session. |
 ## Open questions
 
 - D6 Overage: common field set pending milestone 3 research. Consent (who decides to spend) not decided yet.
@@ -100,6 +109,12 @@
 | Cursor: deducing the active pool | sonnet | done (included: reliable w/ caveats for explicit model; Auto and on-demand: heuristic) | `.agents/research/cursor-active.md` |
 | ACP: `Cost` usage and root-shape conventions | sonnet | done | `.agents/research/acp-amounts-and-root.md` |
 
+## Research tasks (milestone 5: pool state encoding)
+
+| Task | Model | Status | Note |
+|------|-------|--------|------|
+| ACP precedents for collapsed status/reason enums vs boolean + reason | sonnet | done | `.agents/research/acp-state-enums.md` |
+
 ## Next step
 
-Ask the user: `active` semantics and encoding, amount type name/representation, pool `state` vs meter `status`. Then write the RFD draft.
+D19: present pros/cons (research favours one collapsed open enum) and get the user's confirmation, then write the RFD draft.
