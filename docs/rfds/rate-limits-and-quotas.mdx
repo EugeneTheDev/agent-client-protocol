@@ -181,7 +181,7 @@ A Client shows three independent elements that never add up into one number:
 2. A **session token counter** (input, output, cached, reasoning), accumulated from `PromptResponse.usage`. It only
    grows.
 3. An **account quota block** from `quota_update` and `quota/read`: "5-hour limit: 42% used, resets at 18:00",
-   "Weekly limit: 64% used", "Extra usage: $12.40 of $50.00".
+   "Weekly limit: 64% used", "Extra usage: \$12.40 of \$50.00".
 
 The quota block lists every known pool and meter in the Agent's order. It renders a percentage and reset time when
 that is all the Agent knows, and absolute amounts when they exist. It never shows zeros for values the Agent did not
@@ -383,12 +383,12 @@ A new generic amount type.
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `value` | string (decimal) | yes | Decimal number as a string, such as `"12.50"` or `"420"`. Exact; no float rounding. |
-| `unit` | string | yes | An ISO 4217 currency code (three uppercase letters, such as `USD`), or a lowercase unit: `requests`, `tokens`, `credits`. |
+| `unit` | string | yes | An ISO 4217 currency code (three uppercase letters, such as `USD`), or a lowercase unit, e.g., `requests`, `tokens`, `credits`. |
 | `_meta` | object | no | Extension metadata. |
 
 - Currency amounts are in major units (`"12.50"` USD, not `1250` cents). Agents convert minor units and micro-units
   before sending.
-- Non-currency units are an open set. Values starting with `_` are reserved for implementation-specific units.
+- Non-currency units are an open set.
 - Clients render currency units as money and other units as a count with a label.
 
 `Cost` in `usage_update` stays unchanged. `Cost` is cumulative session spend; `Quantity` is a measurement against a
