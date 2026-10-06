@@ -2,8 +2,8 @@
 
 ## Phase
 
-6. Review. The draft is written, committed and pushed: `docs/rfds/rate-limits-and-quotas.mdx` (commit `3603c5a6`).
-   Waiting for the user's review feedback.
+6. Review. Review round 1 applied (freshness, v2 capability, optional unit, per-pool mappings). Waiting for the
+   user's next round of feedback.
 
 ## Resume notes
 
@@ -56,6 +56,8 @@ All tasks are done. No researcher is running.
 | 4 | Active-pool deducibility: Copilot CLI, Cursor | sonnet | `<agent>-active.md` |
 | 4 | ACP `Cost` usage and root-shape conventions | sonnet | `acp-amounts-and-root.md` |
 | 5 | ACP precedents for collapsed status enums vs boolean + reason | sonnet | `acp-state-enums.md` |
+| 6 | ACP error codes and capability gating | sonnet | `acp-capability-errors.md` |
+| 6 | Quota freshness: push vs poll ordering | opus | `acp-quota-freshness.md` |
 
 All notes are in `.agents/research/`.
 
@@ -63,8 +65,12 @@ All notes are in `.agents/research/`.
 
 - **Delivery:** a `quota_update` session update (full snapshot) plus a client-to-agent `quota/read` request; both return
   `QuotaSnapshot { pools, updatedAt?, _meta? }`. No extra nesting.
-- **Capabilities:** the agent advertises `quota: {}` (top-level). The client advertises `session.quota: {}`. Push needs
-  both; `quota/read` needs only the agent capability.
+- **Capabilities:** the agent advertises `quota: {}` (top-level). In v1 the client advertises `session.quota: {}`; v2
+  has no client capability. Push needs the agent capability (plus the client one in v1); `quota/read` needs only the
+  agent capability.
+- **Freshness:** required `updatedAt` = observation time, non-decreasing per Agent process; greatest wins per scope;
+  equal means identical pools. A sessionless `quota/read` stands alone. First snapshot per scope on a new connection
+  is accepted.
 - **Full snapshots:** each update replaces the previous one. No patch semantics. Omitted and `null` mean "not reported".
 - **`QuotaPool`** `{ id, label?, state?, meters[] }`. No `kind` field and no `active` marker. Display order is meaningful.
 - **`QuotaPoolState`**, an open enum: `available` / `exhausted` / `not_enabled` / `not_permitted` / `not_eligible` /
@@ -73,7 +79,7 @@ All notes are in `.agents/research/`.
   resetsAt? (RFC 3339), status? }`. It needs at least one of `usedPercent` / `used` / `remaining` / `status`. Agents never
   synthesize values.
 - **`QuotaMeterStatus`**, an open enum: `ok` / `warning` / `exceeded`.
-- **`Quantity`** `{ value: decimal string, unit }`. `unit` is ISO 4217 for money (major units) or a lowercase unit
+- **`Quantity`** `{ value: decimal string, unit? }` (absent unit = not reported). `unit` is ISO 4217 for money (major units) or a lowercase unit
   (`requests`, `tokens`, `credits`). `Cost` is unchanged.
 - **`quotaExceeded` error:** a new code (placeholder `-32003`). Its `data` is `{ poolId?, meterId?, resetsAt?, retryAfter? }`.
 - **`quota/read`:** `sessionId` is optional. Without it, the agent answers for the account it would use for a new session.
@@ -101,25 +107,33 @@ Superseded rows are kept for history and marked "superseded".
 | 2026-10-06 | D13 | Active marker | Dropped: no agent can fill it reliably. |
 | 2026-10-06 | D14 | State vs status | Both pool `state` and meter `status`. Encoding refined by D19. |
 | 2026-10-06 | D15 | Amount type | `Quantity { value: decimal string, unit }`. `Cost` is unchanged. |
-| 2026-10-06 | D16 | As-of time | Optional `updatedAt` on the snapshot; display only. |
+| 2026-10-06 | D16 | As-of time | Superseded by D20. Optional `updatedAt` on the snapshot; display only. |
 | 2026-10-06 | D17 | Ordering | Pools and meters are in display order. |
 | 2026-10-06 | D18 | `quota/read` scope | Optional `sessionId`. Without it, the account for a new session. |
 | 2026-10-06 | D19 | Pool state encoding | One optional open enum. Only `available` is usable. Absent means unknown. |
+| 2026-10-06 | D20 | Freshness | Required `updatedAt` (observation time, non-decreasing); newer-or-equal wins; not message order. |
+| 2026-10-06 | D21 | `updatedAt` tie | Equal `updatedAt` means identical pools; Agent bumps by 1 ms on change. |
+| 2026-10-06 | D22 | v2 client capability | None in v2 (follow notices). v1 keeps `clientCapabilities.session.quota`. |
+| 2026-10-06 | D23 | Unknown units | `Quantity.unit` optional; absent = not reported. |
+| 2026-10-06 | D24 | Mapping section | Nested headings per agent and pool, with JSON examples; no table. |
 
 ## Open questions
 
 Choices made in the draft without an explicit user decision; confirm them in review:
 
 1. Agent capability placement: top-level `agentCapabilities.quota` (v1) / `capabilities.quota` (v2), like `providers`.
-2. Client capability `session.quota` required in v2 too (v2 could drop it thanks to `SessionUpdate::Other`).
-3. `quota_update` is not replayed on `session/load` / `session/resume`; clients call `quota/read`.
-4. Error code `-32003` is a placeholder.
-5. `quotaExceeded` MAY be returned without the quota capability (ids omitted).
-6. Agents push when their data changes, MAY push at session start, and SHOULD NOT send identical consecutive snapshots.
-7. Adapters keep vendor `_meta` keys for one compatibility cycle. Stabilize after two agents and one client ship.
-8. FAQ: API-key per-minute rate-limit headers MAY map to `PT1M` meters.
-9. The RFD is not yet registered in the docs navigation. A researcher must check how other RFDs are registered.
+2. `quota_update` is not replayed on `session/load` / `session/resume`; clients call `quota/read`.
+3. Error code `-32003` is a placeholder, and it falls in MCP's reserved `-32000..-32019` band. The MCP-over-ACP RFD
+   uses `-33xxx`. Proposal: pick a code outside that band.
+4. `quotaExceeded` MAY be returned without the quota capability (ids omitted). Research: no ACP error is
+   capability-gated, so this is consistent. Proposal: keep.
+5. Reference `docs/rfds/v2/prompt.mdx:288` (rate limits as a future `error` stop-reason category) from the RFD.
+6. Freshness details chosen from research recommendations: a sessionless `quota/read` stands alone; change-only
+   providers stamp the time they learned of the change; first snapshot per scope on a new connection is accepted.
+7. Agents push when their data changes, MAY push at session start, and SHOULD NOT send identical consecutive snapshots.
+8. Adapters keep vendor `_meta` keys for one compatibility cycle. Stabilize after two agents and one client ship.
+9. FAQ: API-key per-minute rate-limit headers MAY map to `PT1M` meters.
 
 ## Next step
 
-Get the user's review of `docs/rfds/rate-limits-and-quotas.mdx`, including the nine open choices above, and iterate.
+Get the user's answers on open questions 3-6 and their next review round of `docs/rfds/rate-limits-and-quotas.mdx`.
