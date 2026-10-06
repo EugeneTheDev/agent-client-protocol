@@ -2,7 +2,7 @@
 
 ## Phase
 
-4. Decisions (synthesis written to `.agents/research/synthesis.md`)
+6. Review (draft written: `docs/rfds/rate-limits-and-quotas.mdx`)
 
 ## Agent list
 
@@ -75,46 +75,20 @@
 | 2026-10-06 | D7 refined | `quotaExceeded` error `data` (all optional): `poolId`, `meterId`, `resetsAt`, `retryAfter` (ISO 8601 duration). |
 | 2026-10-06 | D17 Ordering | Pools and meters are in display order; clients SHOULD keep it. |
 | 2026-10-06 | D18 `quota/read` scope | Option 1: optional `sessionId`. Without it the agent answers for the account it would use for a new session; with it, for that session. The push carries pools for its own session. |
+| 2026-10-06 | D19 Pool state | One optional open enum `state`: `available` / `exhausted` / `not_enabled` / `not_permitted` / `not_eligible` / `_custom`. Only `available` means usable; any other value (including unknown and `_` values) means not usable. Absent = the agent doesn't know (clients make no availability claim). Replaces `state` + `unavailableReason`. |
 ## Open questions
 
-- D6 Overage: common field set pending milestone 3 research. Consent (who decides to spend) not decided yet.
-- D3 follow-up: how a limit is removed under the keyed-list update.
-
-## Research tasks (milestone 2: ACP conventions)
-
-| Task | Model | Status | Note |
-|------|-------|--------|------|
-| ACP update/upsert semantics (`MaybeUndefined`, existing update kinds) | opus | done | `.agents/research/acp-update-semantics.md` |
-| ACP capability gating, method scoping, open enums, time/duration conventions | sonnet | done | `.agents/research/acp-capabilities.md` |
-
-## Research tasks (milestone 3: overage)
-
-| Task | Model | Status | Note |
-|------|-------|--------|------|
-| Claude Code overage | opus | done | `.agents/research/claude-code-overage.md` |
-| Codex overage (credits, spend control) | opus | done | `.agents/research/codex-overage.md` |
-| Gemini CLI overage (AI credits) | opus | done | `.agents/research/gemini-overage.md` |
-| Copilot CLI overage (premium requests) | sonnet | done | `.agents/research/copilot-cli-overage.md` |
-| Cursor overage (on-demand usage) | sonnet | done | `.agents/research/cursor-overage.md` |
-| Cline overage (pay-as-you-go, spend limits) | sonnet | done | `.agents/research/cline-overage.md` |
-
-## Research tasks (milestone 4: active marker, amounts, root shape)
-
-| Task | Model | Status | Note |
-|------|-------|--------|------|
-| Claude Code: deducing the active pool | opus | done (overage: reliable w/ caveats; included: heuristic, multiple windows charged at once) | `.agents/research/claude-code-active.md` |
-| Codex: deducing the active pool | opus | done (included: heuristic, exact only on 429; credits: poll-only) | `.agents/research/codex-active.md` |
-| Gemini CLI: deducing the active pool | opus | done (included: reliable w/ caveats; credits: heuristic, after-the-fact consumedCredits) | `.agents/research/gemini-active.md` |
-| Copilot CLI: deducing the active pool | sonnet | done (heuristic only) | `.agents/research/copilot-cli-active.md` |
-| Cursor: deducing the active pool | sonnet | done (included: reliable w/ caveats for explicit model; Auto and on-demand: heuristic) | `.agents/research/cursor-active.md` |
-| ACP: `Cost` usage and root-shape conventions | sonnet | done | `.agents/research/acp-amounts-and-root.md` |
-
-## Research tasks (milestone 5: pool state encoding)
-
-| Task | Model | Status | Note |
-|------|-------|--------|------|
-| ACP precedents for collapsed status/reason enums vs boolean + reason | sonnet | done | `.agents/research/acp-state-enums.md` |
+Choices made in the draft without an explicit user decision (to confirm in review):
+- Agent capability placement: top-level `agentCapabilities.quota` (v1) / `capabilities.quota` (v2), like `providers`.
+- Client capability `session.quota` in both v1 and v2 (v2 could drop it thanks to `SessionUpdate::Other`).
+- `quota_update` is not replayed on `session/load` / `session/resume`.
+- Error code number: `-32003` used as a placeholder.
+- `quotaExceeded` MAY be returned without the quota capability (ids then omitted).
+- Agents SHOULD NOT send identical consecutive snapshots; MAY push at session start.
+- Adapters keep vendor `_meta` keys for one compatibility cycle; stabilize after two Agents and one Client ship.
+- FAQ: API-key rate-limit headers MAY map to `PT1M` meters (optional).
+- RFD navigation registration (docs config) not done.
 
 ## Next step
 
-D19: present pros/cons (research favours one collapsed open enum) and get the user's confirmation, then write the RFD draft.
+Get the user's review of the draft and iterate.
