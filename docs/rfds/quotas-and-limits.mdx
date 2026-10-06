@@ -1,5 +1,5 @@
 ---
-title: "Rate Limits and Quotas"
+title: "Quotas and Limits"
 ---
 
 Author(s): [@EugeneTheDev](https://github.com/EugeneTheDev)
@@ -8,7 +8,7 @@ Author(s): [@EugeneTheDev](https://github.com/EugeneTheDev)
 
 > What are you proposing to change?
 
-Add a standard way for Agents to report account quota and rate-limit state to Clients:
+Add a standard way for Agents to report account quota and limits state to Clients:
 
 - A `quota_update` session update that pushes a full snapshot of the quota pools that apply to the session.
 - A `quota/read` request that returns the same snapshot on demand, with or without a session.
@@ -319,8 +319,6 @@ Client rules:
   step across an Agent restart can't hide fresh data.
 - A Client MUST NOT compare `updatedAt` with its own clock to decide ordering. It MAY use it to show "as of" times.
 
-Remote Agents that run several instances may disagree by their clock skew. Quota changes slowly compared to that skew,
-so this is acceptable.
 
 ### Types
 
@@ -754,14 +752,9 @@ counts in a quota snapshot.
 - **Per-entry patches (upserts).** We considered keyed patches with `omitted = unchanged` and `null = clear`. We chose
   full snapshots because snapshots are small, removal needs no extra mechanism, `null` can't be misread as "unlimited",
   and the push and the read share one shape. Agents with sparse native updates (Codex) merge before sending.
-- **A flat list of limits plus a separate overage entity.** We tried this first. It produced two kinds of meters (on the
-  overage itself and on the limits it referenced). Making every pool a container of meters removed the asymmetry.
 - **A `kind` field (plan vs overage).** Dropped. To a Client every pool is a limit on usage. The boundary between kinds is
   fuzzy in practice (a spend cap on credits, a weekly window that includes overage, a spend limit with no fallback), so
   agents would label them inconsistently. Display order and labels do the job.
-- **`available: boolean` plus a separate `unavailableReason`.** Rejected in favor of one open enum, which matches ACP
-  conventions (`StopReason`, `ToolCallStatus`) and can't contradict itself. The rule "only `available` means usable"
-  keeps unknown values safe.
 - **Required `usedPercent`.** Rejected. Some events carry only a status, some meters have no denominator (an overage
   count, a balance), and some limits are unlimited. Requiring a percent would force agents to drop data or invent it.
 - **Reusing `Cost` for amounts.** `Cost` can't express credits or requests, and its `amount` is a float. Replacing it would
@@ -774,22 +767,6 @@ heuristic in most agents. Several pools are often charged at once (a 5-hour and 
 model's bucket), and the signals that exist describe the last completed response rather than the next one. Only some
 agents report overage use directly. A marker that is usually guessed would mislead users, so it is left out. A pool
 with `state: "exhausted"` next to one that is `available` already tells most of the story.
-
-### How does a Client avoid showing stale data?
-
-Every snapshot carries `updatedAt`, the time the Agent obtained the data. When a push and a read race, the Client keeps
-the one with the greater `updatedAt`, whichever arrives last. After a reload, a Client SHOULD show the last known
-snapshot marked "as of" that time, or call `quota/read` for fresh data.
-
-### Why a timestamp and not a revision counter or message order?
-
-- **Message order** fails when a read is served from older data while a push is written, and on transports that carry
-  responses and session updates on separate streams.
-- **A revision counter** is exact, but it resets when the Agent restarts, means nothing to users, and remote Agents with
-  several instances would need a shared counter. No surveyed agent keeps one.
-- **A timestamp** is one field that can also be displayed. Every surveyed agent can record when it received quota data,
-  and at least one already drops older observations by comparing such times. HTTP caches choose between stored
-  responses the same way, by their `Date`. The rules in [Freshness](#freshness) cover clock steps and ties.
 
 ### What about API-key users who only get rate-limit headers?
 
@@ -815,5 +792,3 @@ units or micro-units, and a JSON float can't carry all of them exactly.
 ## Revision history
 
 - 2026-10-06: Initial draft.
-- 2026-10-06: `updatedAt` is required and decides freshness. No v2 Client capability. `Quantity.unit` is optional.
-  Native mappings are listed per pool.

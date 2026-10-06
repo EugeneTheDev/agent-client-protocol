@@ -196,7 +196,7 @@
               "rfds/end-turn-token-usage",
               "rfds/get-auth-state",
               "rfds/subagents",
-              "rfds/rate-limits-and-quotas"
+              "rfds/quotas-and-limits"
             ]
           },
           {
