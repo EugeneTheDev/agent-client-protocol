@@ -56,6 +56,16 @@
 | 2026-10-05 | D9 Protocol version | v1 unstable + v2. |
 | 2026-10-05 | D10 Window duration | ISO 8601 duration string (`PT5H`, `P7D`, `P1M`). Timestamps: RFC 3339 in v2, ISO 8601 in v1. |
 | 2026-10-05 | D6 Overage | Direction: a separate `overage` entity next to `limits[]` (own state: allowed / active / disabled reason, optional meter, list of covered limits). Same keyed-list upsert semantics as limits. `quota/read` returns the full information, including overages. Pivot if research shows incompatible formats. Common fields: pending research (milestone 3). |
+| 2026-10-05 | D3 revised | Pivot from patch semantics to full snapshots for simpler updates (scope to confirm: whole `quota_update` or overage only). Removal and `unlimited` questions become moot. |
+| 2026-10-05 | D6a Overage caps | `cappedBy` references rejected as confusing (two kinds of meters). User leans toward a nested list of meters, but meters must not be split between overage root fields and the nested list. Brainstorming. |
+| 2026-10-05 | D6b Overage state reason | A field named just `reason` is confusing; the name must say it explains unavailability. |
+| 2026-10-05 | D6c Amounts | Reuse the existing `Cost` type. |
+| 2026-10-05 | D6d Consent | Out of scope. |
+| 2026-10-05 | D6e Overage fields | Drop `unlimited` (no patch semantics). Drop `covers`; marking an overage `active` is enough. |
+| 2026-10-06 | D11 Structure | Option B: everything is a pool holding meters; amounts only inside meters. User questions a `kind` (included vs overage) field: to a client all pools are just limits; prefer no `kind`. An `active` marker is wanted; reliability across agents under research. |
+| 2026-10-06 | D3 final | Full snapshots for the whole `quota_update`; same shape as the `quota/read` result. |
+| 2026-10-06 | D6c revised | Brainstorm a new generic amount type (`{amount: decimal, unit: string}`) vs a union with `Cost`; research where `Cost` is used. |
+| 2026-10-06 | D12 Root shape | User asks whether the root can be a bare list of pools instead of an object with a `pools` field; check ACP conventions. |
 ## Open questions
 
 - D6 Overage: common field set pending milestone 3 research. Consent (who decides to spend) not decided yet.
@@ -79,6 +89,17 @@
 | Cursor overage (on-demand usage) | sonnet | done | `.agents/research/cursor-overage.md` |
 | Cline overage (pay-as-you-go, spend limits) | sonnet | done | `.agents/research/cline-overage.md` |
 
+## Research tasks (milestone 4: active marker, amounts, root shape)
+
+| Task | Model | Status | Note |
+|------|-------|--------|------|
+| Claude Code: deducing the active pool | opus | done (overage: reliable w/ caveats; included: heuristic, multiple windows charged at once) | `.agents/research/claude-code-active.md` |
+| Codex: deducing the active pool | opus | done (included: heuristic, exact only on 429; credits: poll-only) | `.agents/research/codex-active.md` |
+| Gemini CLI: deducing the active pool | opus | done (included: reliable w/ caveats; credits: heuristic, after-the-fact consumedCredits) | `.agents/research/gemini-active.md` |
+| Copilot CLI: deducing the active pool | sonnet | done (heuristic only) | `.agents/research/copilot-cli-active.md` |
+| Cursor: deducing the active pool | sonnet | done (included: reliable w/ caveats for explicit model; Auto and on-demand: heuristic) | `.agents/research/cursor-active.md` |
+| ACP: `Cost` usage and root-shape conventions | sonnet | done | `.agents/research/acp-amounts-and-root.md` |
+
 ## Next step
 
-Ask the overage field-set decisions (synthesis.md 5.3) in one batch, then write the RFD draft.
+Ask the user: `active` semantics and encoding, amount type name/representation, pool `state` vs meter `status`. Then write the RFD draft.
